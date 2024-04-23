@@ -8,33 +8,41 @@ metadata = MetaData(naming_convention={
 
 db = SQLAlchemy(metadata=metadata)
 
-class Bakery(db.Model, SerializerMixin):
-    __tablename__ = 'bakeries'
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
-    serialize_rules = ('-baked_goods.bakery',)
+db = SQLAlchemy()
 
+class Bakery(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, unique=True)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    name = db.Column(db.String(50), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    baked_goods = db.relationship('BakedGood', backref='bakery', lazy=True)
 
-    baked_goods = db.relationship('BakedGood', backref='bakery')
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'created_at': self.created_at.isoformat(),
+            'baked_goods': [bg.to_dict() for bg in self.baked_goods],
+        }
 
-    def __repr__(self):
-        return f'<Bakery {self.name}>'
-
-class BakedGood(db.Model, SerializerMixin):
-    __tablename__ = 'baked_goods'
-
-    serialize_rules = ('-bakery.baked_goods',)
-
+class BakedGood(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, unique=True)
-    price = db.Column(db.Integer)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, onupdate=db.func.now())
+    name = db.Column(db.String(50), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    bakery_id = db.Column(db.Integer, db.ForeignKey('bakery.id'))
 
-    bakery_id = db.Column(db.Integer, db.ForeignKey('bakeries.id'))
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'price': self.price,
+            'created_at': self.created_at.isoformat(),
+            'bakery_id': self.bakery_id,
+        }
+
 
     def __repr__(self):
         return f'<Baked Good {self.name}, ${self.price}>'
